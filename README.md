@@ -15,7 +15,8 @@ Live at **https://aaronvandorn.github.io/P-6/**. Nothing is uploaded; everything
 - **P-6 settings:** pitch, fine tune, level, pan, loop, gate, reverse, lo-fi, filter cutoff and resonance, delay and reverb sends, chop, and the P-6's start, end and loop points (drag them on the lower waveform). Every one of the 62 values is editable under *All 62 settings*. The preview follows pitch, level, pan, start/end, loop and reverse.
 - **Memory:** each pad shows how much of a pad it uses; banks show their fill; too-long pads are flagged.
 - **Save kit:** one `.zip` with the P-6 files, your original sounds and every setting (`kit.json`), so you can open it later and keep editing without losing quality. **Device zip** has only the P-6 files.
-- **Write to P-6** (Chrome or Edge on a computer): writes straight to the P-6 drive.
+- **On the P-6:** read a bank from the P-6 (or a saved export) without loading it into the kit. Each pad shows what's on the P-6 and whether your kit's pad is the same, has different settings, is a different sound, or is only in one place. Play the P-6's version, or **Use** it to bring it into the kit. Reads are remembered, since reading and writing need the P-6 started in different modes.
+- **Write to P-6** (Chrome or Edge on a computer): pick the drive, then review before anything is written: what each pad replaces on the P-6 (from the last read of that bank), which pads stay as they are, and any old files left in `IMPORT` (they'd be imported too, so they're cleared). Unchanged pads can be skipped.
 - The current kit is kept in your browser between visits.
 
 ## Getting sounds onto the P-6

@@ -184,6 +184,30 @@ dialog .row{margin-top:12px}
 .imp-row .why{grid-column:2/-1;font-size:12.5px;color:var(--muted)}
 .imp-row .why.rep{color:var(--warn)}
 .imp-row .why.bad{color:var(--alert)}
+.dev-list{display:grid;gap:4px;margin-top:8px}
+.dev-row{display:grid;grid-template-columns:22px minmax(0,1fr) auto auto;gap:2px 8px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:5px 6px 5px 8px}
+.dev-row b{font-family:var(--display);font-weight:800;font-size:17px;color:var(--oxide-hi)}
+.dev-row .dn{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.dev-row .dn small{color:var(--muted);font-family:var(--mono);font-size:10.5px;margin-left:6px}
+.dev-row .dn.none{color:var(--muted)}
+.dev-row .acts2{display:flex;gap:4px}
+.dev-row .acts2 .btn{padding:3px 8px;font-size:12.5px}
+.chip{font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid currentColor;border-radius:10px;padding:1px 7px;white-space:nowrap;color:var(--muted)}
+.chip.same{color:var(--teal)}
+.chip.diff{color:var(--warn)}
+.chip.add{color:var(--oxide-hi)}
+.chip.dev{color:var(--muted);border-style:dashed}
+.pad .dst{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:transparent}
+.pad .dst.same{background:var(--teal)}
+.pad .dst.diff,.pad .dst.add{background:var(--warn)}
+.pad .dst.dev{border:1.5px solid var(--muted)}
+.bank .rd{position:absolute;top:3px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--teal)}
+.plan{display:grid;gap:2px;max-height:min(42vh,380px);overflow:auto;margin-top:10px;border:1px solid var(--line);border-radius:5px;background:var(--well);padding:4px}
+.plan-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:2px 10px;align-items:baseline;padding:5px 8px}
+.plan-row b{font-family:var(--display);font-weight:800;font-size:17px;color:var(--oxide-hi)}
+.plan-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plan-row .why{grid-column:2/-1;font-size:12.5px;color:var(--muted)}
+.plan-row.keep{opacity:.7}
 .imp-notes{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
 .imp-notes li.bad{color:var(--alert)}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:9px 14px;box-shadow:0 6px 20px var(--shadow);z-index:50;max-width:calc(100vw - 32px);font-size:14px}
@@ -220,6 +244,13 @@ dialog .row{margin-top:12px}
       <div class="pads" id="pads"></div>
       <div class="memline"><span id="bankMem">Bank A: empty</span><span id="kitMem"></span></div>
       <div class="drophint">Drop audio, a kit .zip or a P-6 export on a pad or anywhere on the page. Drag one pad onto another to swap them. Keys 1–6 play the pads.</div>
+    </section>
+
+    <section class="card" id="devCard" aria-label="What's on the P-6">
+      <div class="row"><h2>On the P-6</h2><span class="grow"></span><button class="btn small" id="devRead">Read P-6…</button></div>
+      <div class="say" id="devSay" style="margin-top:6px"></div>
+      <div class="dev-list" id="devList"></div>
+      <div class="row" id="devActs" style="margin-top:8px"><button class="btn small" id="devLoadBank">Load this bank into the kit</button><button class="btn small" id="devForget">Forget this read</button></div>
     </section>
 
     <section class="card bring" aria-label="Bring in sounds from other apps">
@@ -347,8 +378,24 @@ dialog .row{margin-top:12px}
   </section>
 </main>
 
+<dialog id="dlgRead" aria-labelledby="rdTitle">
+  <h3 id="rdTitle">Read what's on the P-6</h3>
+  <p>The P-6 only shows its sounds when it exports them, one bank at a time. Nothing is loaded into your kit: you'll see what's there and how it compares.</p>
+  <ol>
+    <li>Switch the P-6 off and connect it by USB.</li>
+    <li>Hold the bank's button, <b>[A/E]</b> to <b>[D/H]</b>, and switch it on. For banks E–H, hold <b>[SAMPLING]</b> as well.</li>
+    <li>Wait about a minute while the step buttons light up, until the <b>P-6</b> drive appears.</li>
+    <li>Pick the drive (or its <b>EXPORT</b> folder).</li>
+  </ol>
+  <p class="note">Edits made on the P-6 only show up if they were saved there first ([SHIFT] + [TIE] (WRITE)).</p>
+  <div class="row"><button class="btn small" id="rdSaved">Open a saved export…</button><span class="grow"></span><button class="btn" id="rdCancel">Cancel</button><button class="btn primary" id="rdGo">Choose the drive…</button></div>
+</dialog>
+<input type="file" id="devDirIn" webkitdirectory multiple hidden>
+<input type="file" id="devZipIn" accept=".zip" hidden>
+
 <dialog id="dlgWrite">
-  <h3>Write to the P-6</h3>
+  <h3 id="wrTitle">Write to the P-6</h3>
+  <div id="wrStep1">
   <ol>
     <li>Connect the P-6 by USB, hold <b>[SAMPLING]</b> and switch it on.</li>
     <li>Choose what to write, then pick the <b>P-6</b> drive (or its <b>IMPORT</b> folder) when asked.</li>
@@ -362,6 +409,14 @@ dialog .row{margin-top:12px}
     </select></div>
   <p id="wrNote" class="note"></p>
   <div class="row"><span class="grow"></span><button class="btn" id="wrCancel">Cancel</button><button class="btn primary" id="wrGo">Choose the drive…</button></div>
+  </div>
+  <div id="wrStep2" hidden>
+    <p id="wrSum"></p>
+    <div class="plan" id="wrPlan"></div>
+    <ul class="imp-notes" id="wrNotes"></ul>
+    <label class="row note" id="wrSkipRow" style="cursor:pointer"><input type="checkbox" id="wrSkip" checked> <span id="wrSkipTxt"></span></label>
+    <div class="row"><span class="grow"></span><button class="btn" id="wrBack">Back</button><button class="btn primary" id="wrCommit">Write</button></div>
+  </div>
 </dialog>
 
 <dialog id="dlgImport" aria-labelledby="impTitle">
@@ -1573,8 +1628,8 @@ function stopVoice() {
   setPlayBtn();
 }
 // plays a pad the way the P-6 would (as far as we know): pitch, level, pan, start/end, loop, reverse
-function playPad(slot, semis, vel) {
-  const pad = padAt(slot); if (!pad || !pad.r) return;
+function playPad(slot, semis, vel) { const pad = padAt(slot); if (pad && pad.r) playObj(pad, slot, semis, vel); }
+function playObj(pad, slot, semis, vel) {
   const c = ac(), p = pad.prm, n = pad.r.ch[0].length, sr = pad.r.sr;
   stopVoice();
   const rev = !!p.REVERSE, b = padBuffer(pad, rev);
@@ -1689,7 +1744,7 @@ function refreshPad(slot) {
     f2.textContent = pad && pad.r ? (over ? 'too long' : `${+(pad.r.sr / 1000).toFixed(2)}k ${pad.r.ch.length > 1 ? 'st' : 'mono'}`) : '';
     drawWave(t.querySelector('canvas'), pad && pad.r ? pad.r.ch : null, COL['wave']);
   }
-  refreshMem();
+  refreshMem(); refreshDev();
 }
 function refreshAllPads() { $$('.pad').forEach(t => refreshPad(t.dataset.slot)); }
 function refreshMem() {
@@ -2242,39 +2297,229 @@ async function saveZip(full) {
   const blob = await r.z.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
   download(`${r.kitName}${full ? '' : ' (P-6 files)'}.zip`, blob);
 }
-async function writeToDevice(what) {
+/* Writing is two steps: pick the drive, then review the plan (what each pad does to the P-6, using the last
+   read of that bank, and any old files already sitting in IMPORT), then commit. */
+const WR = { what: 'bank', imp: null, plan: null };
+async function walk(dir, base, out, depth) {
+  for await (const [name, hd] of dir.entries()) {
+    const p = base + name;
+    if (hd.kind === 'directory') { if (depth < 4) await walk(hd, p + '/', out, depth + 1); }
+    else out.push({ path: p, handle: hd, parent: dir, name, bytes: () => hd.getFile().then(f => f.arrayBuffer()) });
+  }
+  return out;
+}
+async function writePick(what) {
   if (!window.showDirectoryPicker) { toast('Writing to a drive needs Chrome or Edge on a computer. Use Device zip and copy the folders by hand.', true); return; }
   await ensureRendered();
   const banks = what === 'AD' ? 'ABCD' : what === 'EH' ? 'EFGH' : S.bank;
   const pads = Object.values(S.pads).filter(p => banks.includes(p.slot[0]));
-  if (!pads.length) { toast(`No sounds in ${banks.length > 1 ? 'banks ' + banks[0] + '–' + banks[3] : 'bank ' + banks}.`, true); return; }
+  if (!pads.length) { $('#dlgWrite').close(); toast(`No sounds in ${banks.length > 1 ? 'banks ' + banks[0] + '–' + banks[3] : 'bank ' + banks}.`, true); return; }
   let dir;
   try { dir = await window.showDirectoryPicker({ id: 'p6-drive', mode: 'readwrite' }); } catch (e) { return; }
   let imp = dir;
   if (dir.name.toUpperCase() !== 'IMPORT') {
     try { imp = await dir.getDirectoryHandle('IMPORT'); }
-    catch (e) { toast('That isn’t the P-6 drive: there’s no IMPORT folder in it. Start the P-6 holding [SAMPLING], then pick its drive.', true); return; }
+    catch (e) {
+      let hasExport = false; try { await dir.getDirectoryHandle('EXPORT'); hasExport = true; } catch (x) {}
+      toast(hasExport ? 'The P-6 is in export mode. Switch it off, hold [SAMPLING], switch it on, and pick the drive again.' : 'That isn’t the P-6 drive: there’s no IMPORT folder in it. Start the P-6 holding [SAMPLING], then pick its drive.', true); return;
+    }
   }
+  const leftovers = (await walk(imp, '', [], 0)).filter(f => !/^\./.test(f.name));
+  WR.what = what; WR.imp = imp; WR.plan = { banks, pads, leftovers };
+  showPlan();
+}
+function showPlan() {
+  const { banks, pads, leftovers } = WR.plan;
+  const list = $('#wrPlan'); list.innerHTML = '';
+  let nAdd = 0, nRep = 0, nSame = 0, unknown = []; WR.plan.same = new Set();
+  for (const b of banks) {
+    const snap = DEV.banks[b];
+    if (!snap) unknown.push(b);
+    for (let n = 1; n <= 6; n++) {
+      const slot = `${b}-${n}`, pad = padAt(slot), dp = snap ? snap.pads[n] : null;
+      if (!pad && !dp) continue;
+      let why, cls = '';
+      if (pad) {
+        const st = snap ? compare(pad, dp) : 'unknown';
+        if (st === 'same') { why = 'Same as on the P-6.'; nSame++; WR.plan.same.add(slot); }
+        else if (st === 'add') { why = 'New: this pad is empty on the P-6.'; nAdd++; }
+        else if (st === 'unknown') { why = `Bank ${b} hasn’t been read, so what’s there now is unknown.`; }
+        else { why = `Replaces “${dp.name}” on the P-6${st === 'settings' ? ' (same sound, different settings)' : ''}.`; nRep++; }
+      } else { why = `Empty in your kit, so the P-6 keeps “${dp.name}”.`; cls = ' keep'; }
+      list.append(h('div', { class: 'plan-row' + cls }, h('b', null, slot), h('span', { class: 'nm' }, pad ? pad.name || 'Untitled' : '—'),
+        h('span', { class: 'inf mono muted', style: 'font-size:11.5px' }, pad && pad.r ? fmtS(Math.min(frames(pad), P6.maxFrames(pad.r.ch.length)) / pad.r.sr) : ''),
+        h('span', { class: 'why' }, why)));
+    }
+  }
+  const n = pads.length;
+  $('#wrTitle').textContent = 'Ready to write';
+  $('#wrSum').textContent = `Your kit has ${n} pad${n === 1 ? '' : 's'} in ${banks.length > 1 ? 'banks ' + banks[0] + '–' + banks[3] + ', written as BANK folders' : 'bank ' + banks + ', written as PAD folders'}. ` +
+    [nRep ? `${nRep} replace${nRep === 1 ? 's' : ''} a sound` : '', nAdd ? `${nAdd} new` : '', nSame ? `${nSame} unchanged` : ''].filter(Boolean).join(', ') + (nRep || nAdd || nSame ? '.' : '');
+  const notes = $('#wrNotes'); notes.innerHTML = '';
+  if (unknown.length) notes.append(h('li', null, `Bank${unknown.length > 1 ? 's' : ''} ${unknown.join(', ')} ${unknown.length > 1 ? 'haven’t' : 'hasn’t'} been read from the P-6, so this can’t show what gets replaced. Use Read P-6 first if you want to check.`));
+  if (leftovers.length) notes.append(h('li', { class: 'bad' }, `IMPORT already holds ${leftovers.length} file${leftovers.length === 1 ? '' : 's'} (${leftovers.slice(0, 4).map(f => f.path).join(', ')}${leftovers.length > 4 ? '…' : ''}), probably from an earlier copy. The P-6 would import ${leftovers.length === 1 ? 'it' : 'them'} too, so ${leftovers.length === 1 ? 'it' : 'they'}’ll be removed first.`));
+  notes.hidden = !notes.children.length;
+  $('#wrSkipRow').hidden = !nSame; $('#wrSkip').checked = true;
+  $('#wrSkipTxt').textContent = `Skip the ${nSame} unchanged pad${nSame === 1 ? '' : 's'} (they’re already on the P-6)`;
+  wrCount();
+  $('#wrStep1').hidden = true; $('#wrStep2').hidden = false;
+  if (!$('#dlgWrite').open) $('#dlgWrite').showModal();
+  $('#wrCommit').focus();
+}
+function wrPads() { const p = WR.plan; return p.pads.filter(x => !(p.same.size && $('#wrSkip').checked && p.same.has(x.slot))); }
+function wrCount() { const n = wrPads().length; $('#wrCommit').textContent = n ? `Write ${n} pad${n === 1 ? '' : 's'}` : 'Nothing to write'; $('#wrCommit').disabled = !n && !WR.plan.leftovers.length; if (!n && WR.plan.leftovers.length) $('#wrCommit').textContent = 'Just clear IMPORT'; }
+async function writeCommit() {
+  const { leftovers } = WR.plan, pads = wrPads(), imp = WR.imp, what = WR.what;
+  $('#dlgWrite').close();
   const put = async (d, name, data) => { const fh = await d.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(data); await w.close(); };
   let n = 0;
   try {
+    for (const f of leftovers) { try { await f.parent.removeEntry(f.name); } catch (e) {} }
     for (const pad of pads) {
       const f = devFiles(pad);
       let d = imp;
       if (what !== 'bank') d = await d.getDirectoryHandle(`BANK_${pad.slot[0]}`, { create: true });
       d = await d.getDirectoryHandle(f.padDir, { create: true });
-      for await (const [name, hnd] of d.entries()) if (hnd.kind === 'file' && /^P6_.*\.(wav|prm)$/i.test(name)) await d.removeEntry(name);
       await put(d, f.base + '.WAV', f.wav); await put(d, f.base + '.PRM', f.prm); n++;
     }
   } catch (e) { toast('Writing stopped: ' + e.message, true); return; }
-  toast(`Wrote ${n} pad${n === 1 ? '' : 's'}. Eject the P-6 drive, then press [KYBD] on the P-6.`);
+  WR.plan = null;
+  toast(`Wrote ${n} pad${n === 1 ? '' : 's'}. Eject the P-6 drive, then press [KYBD] on the P-6. Read the bank again afterward to check it.`);
+}
+function writeOpen() {
+  $('#wrTitle').textContent = 'Write to the P-6';
+  $('#wrStep1').hidden = false; $('#wrStep2').hidden = true;
+  $('#wrNote').textContent = window.showDirectoryPicker ? `PAD folders go straight into IMPORT, which is how Roland’s manual loads samples. BANK folders follow Roland’s factory restore: four banks per import. You’ll see what changes before anything is written.` : 'This browser can’t write to a drive. Use Device zip and copy the folders by hand (Chrome or Edge on a computer can write directly).';
+  $('#wrGo').disabled = !window.showDirectoryPicker; $('#dlgWrite').showModal();
+}
+
+/* ================= what's on the P-6 (read from its exports) =================
+   DEV.banks[b] = { readAt, pads: { 1..6: { name, wav:ArrayBuffer, prm:string, pad (playable) } } }.
+   Kept in IndexedDB too, since reading and writing need the P-6 restarted in different modes. */
+const DEV = { banks: {} };
+async function devFromFiles(entries) {
+  const found = {}; let n = 0, importMode = false;
+  const sorted = entries.slice().sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  for (const e of sorted) {
+    const p = e.path.replace(/\\/g, '/');
+    if (/(^|\/)IMPORT\//i.test(p)) { importMode = true; continue; }
+    const m = p.match(/P6_([A-H])-([1-6])\.wav$/i); if (!m) continue;
+    const b = m[1].toUpperCase(), k = +m[2];
+    found[b] = found[b] || {};
+    if (found[b][k]) continue;
+    const prmE = entries.find(x => x.path.replace(/\\/g, '/') === p.replace(/\.wav$/i, '.PRM') || x.path.replace(/\\/g, '/') === p.replace(/\.wav$/i, '.prm'));
+    found[b][k] = { name: p.split('/').pop().replace(/\.wav$/i, ''), wav: await e.bytes(), prm: prmE ? new TextDecoder().decode(await prmE.bytes()) : null };
+  }
+  const banks = Object.keys(found).sort();
+  if (!banks.length) {
+    toast(importMode ? 'The P-6 is in import mode, which doesn’t show what’s on it. Switch it off, hold the bank’s button, switch it on, wait a minute, then read again.' : 'No P-6 export found there (looking for P6_A-1.WAV and so on).', true);
+    return;
+  }
+  for (const b of banks) {
+    const pads = {};
+    for (const k in found[b]) { pads[k] = found[b][k]; n++; }
+    DEV.banks[b] = { readAt: Date.now(), pads };
+    await devPrepare(b);
+  }
+  devPersist();
+  selectBank(banks[0]); refreshDev();
+  toast(`Read bank${banks.length > 1 ? 's ' + banks.join(', ') : ' ' + banks[0]} from the P-6: ${n} sound${n === 1 ? '' : 's'}.`);
+}
+async function devPrepare(b) {
+  const bank = DEV.banks[b];
+  for (const k in bank.pads) {
+    const d = bank.pads[k];
+    try {
+      const w = WAV.read(d.wav.slice(0));
+      const prm = (d.prm && P6.parsePrm(d.prm)) || (w.extra['PAD '] && P6.readPadChunk(w.extra['PAD '])) || {};
+      d.pad = { slot: `P6:${b}-${k}`, name: d.name, prm: { ...P6.defaults(slotIndex(`${b}-${k}`)), ...prm }, r: { sr: w.sr, ch: w.ch } };
+    } catch (e) { d.pad = null; }
+  }
+}
+// how a kit pad compares with the P-6's pad: same | settings | sound | add | dev (only on the P-6) | none
+const bytesEq = (a, b) => { if (!a || !b || a.byteLength !== b.byteLength) return false; const x = new Uint8Array(a), y = new Uint8Array(b); for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false; return true; };
+const cmpCache = new WeakMap();
+function compare(pad, dp) {
+  if (!pad && !dp) return 'none';
+  if (!pad) return 'dev';
+  if (!dp) return 'add';
+  if (!pad.r) return 'sound';
+  const key = pad.r, ck = JSON.stringify(pad.prm) + '|' + dp.name + dp.wav.byteLength;
+  const c = cmpCache.get(key); if (c && c.k === ck && c.dp === dp) return c.v;
+  const f = devFiles(pad);
+  let v;
+  if (bytesEq(f.wav, dp.wav) && (!dp.prm || f.prm === dp.prm)) v = 'same';
+  else {
+    // same audio? compare the WAVs up to the end of the data chunk (the PAD chunk after it holds the settings)
+    const a = WAV.read(f.wav.slice(0)), b2 = dp.pad && dp.pad.r;
+    let same = !!(a && b2 && a.sr === b2.sr && a.ch.length === b2.ch.length && a.ch[0].length === b2.ch[0].length);
+    for (let c2 = 0; same && c2 < a.ch.length; c2++) { const x = a.ch[c2], y = b2.ch[c2]; for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) { same = false; break; } }
+    v = same ? 'settings' : 'sound';
+  }
+  cmpCache.set(key, { k: ck, dp, v });
+  return v;
+}
+const CHIP = { same: ['same', 'Same'], settings: ['diff', 'Settings differ'], sound: ['diff', 'Different'], add: ['add', 'Only in kit'], dev: ['dev', 'Only on P-6'], none: ['', 'Empty'] };
+let devTimer = 0;
+function refreshDev() { clearTimeout(devTimer); devTimer = setTimeout(refreshDevNow, 150); }
+function refreshDevNow() {
+  const b = S.bank, snap = DEV.banks[b], list = $('#devList');
+  $$('.bank').forEach(el => { const has = !!DEV.banks[el.dataset.bank]; let d = el.querySelector('.rd'); if (has && !d) el.append(h('span', { class: 'rd', title: 'Read from the P-6' })); if (!has && d) d.remove(); });
+  list.innerHTML = '';
+  $('#devActs').hidden = !snap;
+  $$('.pad').forEach(t => { const d = t.querySelector('.dst'); if (d) d.className = 'dst'; });
+  if (!snap) { $('#devSay').textContent = `Bank ${b} hasn’t been read from the P-6. Read it to see what’s there and how it compares with your kit before you write.`; return; }
+  const ago = Math.round((Date.now() - snap.readAt) / 60000);
+  let nDiff = 0;
+  for (let k = 1; k <= 6; k++) {
+    const slot = `${b}-${k}`, pad = padAt(slot), dp = snap.pads[k] || null, st = compare(pad, dp), [cls, label] = CHIP[st];
+    if (st === 'settings' || st === 'sound' || st === 'add') nDiff++;
+    const tile = document.querySelector(`.pad[data-slot="${slot}"]`);
+    if (tile) { let d = tile.querySelector('.dst'); if (!d) { d = h('i', { class: 'dst' }); tile.append(d); } d.className = 'dst ' + (cls || ''); d.title = 'P-6: ' + label; }
+    const dn = dp ? h('span', { class: 'dn' }, dp.name, dp.pad && dp.pad.r ? h('small', null, fmtS(dp.pad.r.ch[0].length / dp.pad.r.sr) + ' ' + (dp.pad.r.ch.length > 1 ? 'st' : 'mono')) : null) : h('span', { class: 'dn none' }, 'Empty on the P-6');
+    const acts = h('span', { class: 'acts2' });
+    if (dp && dp.pad) {
+      acts.append(h('button', { class: 'btn', title: 'Play what’s on the P-6', 'aria-label': `Play ${slot} as it is on the P-6`, onclick: () => playObj(dp.pad, dp.pad.slot) }, '▶'));
+      if (st !== 'same') acts.append(h('button', { class: 'btn', title: 'Put the P-6’s sound on this pad in your kit', onclick: () => devUse(b, [k]) }, 'Use'));
+    }
+    list.append(h('div', { class: 'dev-row' }, h('b', null, k), dn, h('span', { class: 'chip ' + cls }, label), acts));
+  }
+  $('#devSay').textContent = `Bank ${b} as the P-6 exported it ${ago < 1 ? 'just now' : ago < 60 ? ago + ' min ago' : ago < 1440 ? Math.round(ago / 60) + ' h ago' : new Date(snap.readAt).toLocaleDateString()}. ` +
+    (nDiff ? `${nDiff} pad${nDiff === 1 ? '' : 's'} in your kit would change it.` : 'Your kit matches it.');
+}
+async function devUse(b, ks) {
+  const snap = DEV.banks[b]; if (!snap) return;
+  const entries = [];
+  for (const k of ks) { const d = snap.pads[k]; if (!d) continue; const base = `DEV/BANK_${b}/PAD_${k}/P6_${b}-${k}`; entries.push({ path: base + '.WAV', bytes: async () => d.wav.slice(0) }); if (d.prm) entries.push({ path: base + '.PRM', bytes: async () => new TextEncoder().encode(d.prm).buffer }); }
+  if (!entries.length) { toast(`Bank ${b} is empty on the P-6.`); return; }
+  await loadEntries(entries, { bank: b });
+}
+let devPersistTimer = 0;
+function devPersist() {
+  clearTimeout(devPersistTimer);
+  devPersistTimer = setTimeout(() => {
+    const v = {}; for (const b in DEV.banks) { v[b] = { readAt: DEV.banks[b].readAt, pads: {} }; for (const k in DEV.banks[b].pads) { const d = DEV.banks[b].pads[k]; v[b].pads[k] = { name: d.name, wav: d.wav, prm: d.prm }; } }
+    DB.put(v, 'device').catch(() => {});
+  }, 300);
+}
+async function devRestore() {
+  let v = null; try { v = await DB.get('device'); } catch (e) {}
+  if (!v) return;
+  for (const b in v) { if (!BANKS.includes(b)) continue; DEV.banks[b] = v[b]; await devPrepare(b); }
+}
+async function devReadDrive() {
+  if (!window.showDirectoryPicker) { $('#devDirIn').click(); return; }
+  let dir; try { dir = await window.showDirectoryPicker({ id: 'p6-drive', mode: 'read' }); } catch (e) { return; }
+  $('#dlgRead').close(); toast('Reading…');
+  const out = await walk(dir, dir.name.toUpperCase() === 'EXPORT' ? 'EXPORT/' : '', [], 0);
+  await devFromFiles(out);
 }
 
 /* ================= keep the kit between visits (IndexedDB) ================= */
 const DB = {
   open() { return new Promise((res, rej) => { const r = indexedDB.open('p6-sample-banks', 1); r.onupgradeneeded = () => r.result.createObjectStore('kit'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
-  async put(v) { const db = await DB.open(); return new Promise((res, rej) => { const t = db.transaction('kit', 'readwrite'); t.objectStore('kit').put(v, 'current'); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); },
-  async get() { const db = await DB.open(); return new Promise((res, rej) => { const t = db.transaction('kit'); const r = t.objectStore('kit').get('current'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+  async put(v, key) { const db = await DB.open(); return new Promise((res, rej) => { const t = db.transaction('kit', 'readwrite'); t.objectStore('kit').put(v, key || 'current'); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); },
+  async get(key) { const db = await DB.open(); return new Promise((res, rej) => { const t = db.transaction('kit'); const r = t.objectStore('kit').get(key || 'current'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
 };
 let persistTimer = 0;
 function persist() {
@@ -2478,12 +2723,25 @@ async function boot() {
   });
   $('#saveKit').addEventListener('click', () => saveZip(true));
   $('#saveDev').addEventListener('click', () => saveZip(false));
-  $('#writeDev').addEventListener('click', () => {
-    $('#wrNote').textContent = window.showDirectoryPicker ? `PAD folders go straight into IMPORT, which is how Roland’s manual loads samples. BANK folders follow Roland’s factory restore: four banks per import.` : 'This browser can’t write to a drive. Use Device zip and copy the folders by hand (Chrome or Edge on a computer can write directly).';
-    $('#wrGo').disabled = !window.showDirectoryPicker; $('#dlgWrite').showModal();
-  });
+  $('#writeDev').addEventListener('click', writeOpen);
   $('#wrCancel').addEventListener('click', () => $('#dlgWrite').close());
-  $('#wrGo').addEventListener('click', () => { const w = $('#wrWhat').value; $('#dlgWrite').close(); writeToDevice(w); });
+  $('#wrGo').addEventListener('click', () => writePick($('#wrWhat').value));
+  $('#wrBack').addEventListener('click', () => { WR.plan = null; $('#wrTitle').textContent = 'Write to the P-6'; $('#wrStep1').hidden = false; $('#wrStep2').hidden = true; });
+  $('#wrCommit').addEventListener('click', writeCommit);
+  $('#wrSkip').addEventListener('change', wrCount);
+  $('#devRead').addEventListener('click', () => $('#dlgRead').showModal());
+  $('#rdCancel').addEventListener('click', () => $('#dlgRead').close());
+  $('#rdGo').addEventListener('click', devReadDrive);
+  $('#rdSaved').addEventListener('click', () => { $('#dlgRead').close(); $('#devZipIn').click(); });
+  $('#devDirIn').addEventListener('change', () => { const f = Array.from($('#devDirIn').files); $('#devDirIn').value = ''; $('#dlgRead').close(); if (f.length) devFromFiles(f.map(x => ({ path: x.webkitRelativePath || x.name, bytes: () => x.arrayBuffer() }))); });
+  $('#devZipIn').addEventListener('change', async () => {
+    const f = $('#devZipIn').files[0]; $('#devZipIn').value = ''; if (!f) return;
+    if (!window.JSZip) { toast('The zip reader didn’t load. Check your connection and reload.', true); return; }
+    try { const z = await JSZip.loadAsync(f), entries = []; z.forEach((path, ze) => { if (!ze.dir) entries.push({ path, bytes: () => ze.async('arraybuffer') }); }); await devFromFiles(entries); }
+    catch (e) { toast(`Couldn’t open ${f.name} as a zip.`, true); }
+  });
+  $('#devLoadBank').addEventListener('click', () => devUse(S.bank, [1, 2, 3, 4, 5, 6]));
+  $('#devForget').addEventListener('click', () => { delete DEV.banks[S.bank]; devPersist(); refreshDev(); });
   $('#kitBank').addEventListener('change', kitNote); $('#kitPad').addEventListener('change', kitNote);
   $('#kitCancel').addEventListener('click', () => { const k = kitPending; kitPending = null; $('#dlgKit').close(); if (k) k.answer(0); });
   $('#dlgKit').addEventListener('cancel', () => { const k = kitPending; kitPending = null; if (k) k.answer(0); });
@@ -2516,7 +2774,7 @@ async function boot() {
   tapeRefresh([]);
   if (window.KitLink) KitLink.receiver({ app: 'p6', title: 'P-6 Sample Banks', onKit });
   startJx();
-  await restore();
+  await restore(); await devRestore();
   selectBank(S.bank); selectPad(S.sel); onTheme();
 }
 boot();
