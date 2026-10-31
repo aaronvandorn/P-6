@@ -175,6 +175,17 @@ dialog p{margin:6px 0;color:var(--muted)}
 dialog ol{margin:6px 0;padding-left:20px;color:var(--muted)}
 dialog ol b{color:var(--ink)}
 dialog .row{margin-top:12px}
+.imp-list{display:grid;gap:2px;max-height:min(46vh,420px);overflow:auto;margin-top:10px;border:1px solid var(--line);border-radius:5px;background:var(--well);padding:4px}
+.imp-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:2px 10px;align-items:baseline;text-align:left;background:none;border:0;border-radius:4px;padding:6px 8px;cursor:pointer;color:var(--ink)}
+.imp-row:hover,.imp-row:focus-visible{background:var(--panel-2)}
+.imp-row b{font-family:var(--display);font-weight:800;font-size:18px;color:var(--oxide-hi);letter-spacing:.03em}
+.imp-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-row .inf{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap}
+.imp-row .why{grid-column:2/-1;font-size:12.5px;color:var(--muted)}
+.imp-row .why.rep{color:var(--warn)}
+.imp-row .why.bad{color:var(--alert)}
+.imp-notes{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+.imp-notes li.bad{color:var(--alert)}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:9px 14px;box-shadow:0 6px 20px var(--shadow);z-index:50;max-width:calc(100vw - 32px);font-size:14px}
 .toast.bad{border-color:var(--alert)}
 @media (max-width:520px){.brand h1{font-size:21px}.kitname{width:150px}.pot{min-width:0}.top-in{gap:8px}}
@@ -351,6 +362,14 @@ dialog .row{margin-top:12px}
     </select></div>
   <p id="wrNote" class="note"></p>
   <div class="row"><span class="grow"></span><button class="btn" id="wrCancel">Cancel</button><button class="btn primary" id="wrGo">Choose the drive…</button></div>
+</dialog>
+
+<dialog id="dlgImport" aria-labelledby="impTitle">
+  <h3 id="impTitle">Imported</h3>
+  <p id="impDesc"></p>
+  <div class="imp-list" id="impList"></div>
+  <ul class="imp-notes" id="impNotes"></ul>
+  <div class="row"><span class="grow"></span><button class="btn" id="impUndo">Undo import</button><button class="btn primary" id="impKeep">Keep</button></div>
 </dialog>
 
 <dialog id="dlgKit">
@@ -2034,7 +2053,8 @@ async function loadEntries(entries, opts) {
     if (slot && !opts.target) { if (taken.has(slot)) { dupes.push(p); continue; } taken.add(slot); placed.push({ e, slot }); }
     else loose.push(e);
   }
-  let n = 0; const errs = [];
+  let n = 0; const errs = [], rows = [], snap = snapshot();
+  const row = (slot, pad, withPrm) => rows.push({ slot, pad, prm: withPrm, was: snap.pads[slot] || null });
   for (const { e, slot } of placed) {
     try {
       const bytes = await e.bytes(), name = e.path.split('/').pop();
@@ -2049,7 +2069,7 @@ async function loadEntries(entries, opts) {
         pad.points = (prm.START_POS || 0) !== 0 || prm.SIZE !== len || prm.LOOP_SIZE !== len ? 'custom' : 'file';
       }
       await renderNow(pad); pad.lastN = frames(pad);
-      setPad(slot, pad); n++;
+      setPad(slot, pad); n++; row(slot, pad, !!prm);
     } catch (err) { errs.push(err.message); }
   }
   // loose sounds fill empty pads, starting at the target pad (or the selected bank)
@@ -2067,21 +2087,65 @@ async function loadEntries(entries, opts) {
         const pad = newPad(SLOTS[i], src);
         if (chunk) { pad.prm = { ...P6.defaults(i), ...chunk, PHRASE: i }; pad.points = 'file'; }
         await renderNow(pad); pad.lastN = frames(pad);
-        setPad(SLOTS[i], pad); n++; i++;
+        setPad(SLOTS[i], pad); n++; row(SLOTS[i], pad, !!chunk); i++;
       } catch (err) { errs.push(err.message); }
     }
   }
   refreshAllPads(); showEditor(); persist();
-  let msg = n ? `Loaded ${n} sound${n === 1 ? '' : 's'}.` : 'Nothing loaded.';
-  if (dupes.length) msg += ` Skipped ${dupes.length} duplicate${dupes.length === 1 ? '' : 's'} of the same pad (kept the first in each folder order).`;
-  if (errs.length) msg += ' ' + errs[0];
-  toast(msg, !n);
-  const first = placed[0] ? placed[0].slot : null;
-  if (first && !opts.target) selectPad(first);
+  if (rows.length) selectPad(rows[0].slot);
+  const notes = [];
+  if (dupes.length) notes.push({ t: `Skipped ${dupes.length} more cop${dupes.length === 1 ? 'y' : 'ies'} of the same pad${dupes.length === 1 ? '' : 's'}. When a folder holds the same pad more than once, the first one (in folder order) is used.` });
+  errs.forEach(t => notes.push({ t, bad: true }));
+  importReport({ title: n ? `Imported ${n} sound${n === 1 ? '' : 's'}` : 'Nothing imported', rows, notes, snap });
+}
+
+/* ---------- import confirmation: what landed where, with Undo ---------- */
+function snapshot() { return { pads: { ...S.pads }, name: S.kitName, sel: S.sel }; }
+function restoreSnap(sn) {
+  stopVoice();
+  S.pads = {}; for (const k in sn.pads) { sn.pads[k].slot = k; S.pads[k] = sn.pads[k]; }
+  S.kitName = sn.name; $('#kitName').value = sn.name;
+  refreshAllPads(); selectPad(sn.sel); persist();
+}
+let impPending = null;
+function importReport(r) {
+  impPending = r;
+  const nRep = r.rows.filter(x => x.was).length;
+  $('#impTitle').textContent = r.title;
+  $('#impDesc').textContent = r.desc || (r.rows.length
+    ? `They're on the pads below${nRep ? `, replacing ${nRep} sound${nRep === 1 ? '' : 's'} that ${nRep === 1 ? 'was' : 'were'} there` : ''}. Click one to hear it. Keep them, or undo to put everything back as it was.`
+    : 'No sounds were added.');
+  const list = $('#impList'); list.innerHTML = ''; list.hidden = !r.rows.length;
+  for (const x of r.rows.slice().sort((a, b) => slotIndex(a.slot) - slotIndex(b.slot))) {
+    const p = x.pad, n = frames(p), over = overBy(p) > 0;
+    const why = [];
+    if (x.prm) why.push('with its P-6 settings');
+    if (x.was) why.push(`replaced “${x.was.name || 'Untitled'}”`);
+    if (over) why.push('too long for one pad: use Fit to the P-6 under Format');
+    const b = h('button', { class: 'imp-row', type: 'button', title: 'Select and play' },
+      h('b', null, x.slot), h('span', { class: 'nm' }, p.name || 'Untitled'),
+      h('span', { class: 'inf' }, p.r ? `${fmtS(n / p.r.sr)} · ${+(p.r.sr / 1000).toFixed(3)}k ${p.r.ch.length > 1 ? 'st' : 'mono'}` : ''),
+      why.length ? h('span', { class: 'why' + (over ? ' bad' : x.was ? ' rep' : '') }, why.join(' · ')) : null);
+    b.addEventListener('click', () => { if (S.pads[x.slot] === p) { selectPad(x.slot); playPad(x.slot); } });
+    list.append(b);
+  }
+  const ul = $('#impNotes'); ul.innerHTML = '';
+  for (const t of r.notes || []) ul.append(h('li', { class: t.bad ? 'bad' : null }, t.t));
+  ul.hidden = !ul.children.length;
+  $('#impUndo').hidden = !r.rows.length && !r.kitReplaced;
+  $('#impKeep').textContent = r.rows.length ? 'Keep' : 'OK';
+  const t = $('.toast'); if (t) t.hidden = true;
+  const d = $('#dlgImport'); if (!d.open) d.showModal(); $('#impKeep').focus();
+}
+function impClose(undo) {
+  const r = impPending; impPending = null; $('#dlgImport').close();
+  if (!r) return;
+  if (undo) { restoreSnap(r.snap); toast('Import undone. The pads are back as they were.'); }
 }
 async function loadKitJson(kit, byPath, base) {
   if (!kit || !Array.isArray(kit.pads)) { toast('That kit.json isn’t one of ours.', true); return; }
   stopVoice();
+  const snap = snapshot(), had = Object.keys(S.pads).length, rows = [];
   S.pads = {}; let n = 0; const errs = [];
   if (kit.name) { S.kitName = String(kit.name).slice(0, 60); $('#kitName').value = S.kitName; }
   for (const k of kit.pads) {
@@ -2093,13 +2157,15 @@ async function loadKitJson(kit, byPath, base) {
       const pad = newPad(k.slot, src, k.name);
       pad.edit = { ...EDIT0, ...(k.edit || {}) }; pad.out = { ...OUT0, ...(k.out || {}) };
       pad.prm = { ...P6.defaults(slotIndex(k.slot)), ...(k.prm || {}) }; pad.points = k.points === 'custom' ? 'custom' : 'file';
-      pad.lastN = k.prm && k.prm.SIZE ? null : null;
       await renderNow(pad); pad.lastN = frames(pad);
-      S.pads[k.slot] = pad; n++;
+      S.pads[k.slot] = pad; n++; rows.push({ slot: k.slot, pad, prm: false, was: null });
     } catch (err) { errs.push(err.message); }
   }
   refreshAllPads(); showEditor(); persist();
-  toast(`Opened "${S.kitName}": ${n} pad${n === 1 ? '' : 's'}.` + (errs.length ? ' ' + errs[0] : ''), !n);
+  if (rows.length) selectPad(rows.slice().sort((a, b) => slotIndex(a.slot) - slotIndex(b.slot))[0].slot);
+  importReport({ title: `Opened “${S.kitName}”`, rows, snap, kitReplaced: had > 0,
+    desc: `${n} pad${n === 1 ? '' : 's'} with all their edits and settings.` + (had ? ` This replaced the ${had} pad${had === 1 ? '' : 's'} you had open; Undo brings them back.` : '') + ' Click one to hear it.',
+    notes: errs.map(t => ({ t, bad: true })) });
 }
 async function loadFiles(files, target, replace) {
   const entries = [];
@@ -2422,6 +2488,9 @@ async function boot() {
   $('#kitCancel').addEventListener('click', () => { const k = kitPending; kitPending = null; $('#dlgKit').close(); if (k) k.answer(0); });
   $('#dlgKit').addEventListener('cancel', () => { const k = kitPending; kitPending = null; if (k) k.answer(0); });
   $('#kitGo').addEventListener('click', kitGo);
+  $('#impKeep').addEventListener('click', () => impClose(false));
+  $('#impUndo').addEventListener('click', () => impClose(true));
+  $('#dlgImport').addEventListener('cancel', () => { impPending = null; });
   $('#capBars').addEventListener('change', capButtons);
   $('#capSrc').addEventListener('change', () => { capButtons(); if (!CAP.pending) $('#capSay').textContent = capIdle(); });
   $('#capLast').addEventListener('click', () => capRequest('last'));

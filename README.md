@@ -8,6 +8,7 @@ Live at **https://aaronvandorn.github.io/P-6/**. Nothing is uploaded; everything
 
 - **Banks and pads:** banks A–H, six pads each, with a waveform, length and memory bar on every pad. Drag one pad onto another to swap them. Keys **1–6** play the pads of the current bank; the space bar plays the selected pad.
 - **Open anything:** a kit `.zip` saved here, a folder or zip copied from the P-6 drive (such as `EXPORT`), Roland's factory sample download, or plain audio (WAV, MP3, OGG, FLAC, M4A). P-6 files land on their own pads with their settings; other sounds fill empty pads. Drop on a pad to put a sound there.
+- **Import check:** after every import a dialog lists each pad that got a sound, whether it came with its P-6 settings, what it replaced, anything skipped, and anything too long. Click a row to hear it, then **Keep**, or **Undo import** to put every pad back as it was.
 - **Edit (baked into the file):** trim with handles, trim silence, fades with linear, exponential or S-curves, gain, normalize, reverse, and **seamless loop** (crossfades the end into the start and turns on Loop on the P-6).
 - **Tone (baked in):** varispeed pitch, low cut, low shelf, a parametric mid, high shelf, high cut, drive (warm, clip or fold) and compression.
 - **Format:** the P-6's rates (44.1, 22.05, 14.7, 11.025 kHz), mono or stereo, 16/12/10/8-bit resolution with optional dither. **Fit to the P-6** picks the best rate that fits. Apply one pad's format to the whole bank or kit.
