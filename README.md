@@ -33,6 +33,7 @@ Export one bank at a time: with USB connected, hold that bank's button (**[A/E]*
 
 ## From the rest of the set
 
+- **Kits from Drum Foundry:** Drum Foundry's **Send to P-6** / **Send kit to P-6** buttons drop its sounds here; choose the bank and first pad and press Add them. (Shared KIT-LINK block; any app in the ecosystem can send kits the same way.)
 - **Record from an app:** grab the last bars (or record the next bars) from Logic Rhythm, Melody Machine, Choir and the other apps open in this browser, cut on their bar lines, onto the selected pad. (Shared JAM-CLIPS block.)
 - **Take a tape:** pull a tape's loop from Tape Loop Deck onto the selected pad. (Shared DECK-LINK block, as a taker.)
 - **Kits:** any app that sends kits with the shared KIT-LINK block can send to `p6`; you choose the bank and pad they start on.
