@@ -168,6 +168,24 @@ details > summary{cursor:pointer;color:var(--muted);letter-spacing:.06em}
 .jx{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
 
 /* dialogs */
+dialog.wide{width:min(760px,calc(100vw - 32px));max-width:min(760px,calc(100vw - 32px))}
+.ch-list{display:grid;gap:3px;max-height:min(40vh,360px);overflow:auto;margin-top:10px;border:1px solid var(--line);border-radius:5px;background:var(--well);padding:4px;min-height:44px}
+.ch-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto auto;gap:6px 10px;align-items:center;padding:4px 6px;border-radius:4px}
+.ch-row:hover{background:var(--panel-2)}
+.ch-row b{font-family:var(--display);font-weight:800;font-size:17px;color:var(--oxide-hi);text-align:right}
+.ch-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-row .inf{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap}
+.ch-row .acts2{display:flex;gap:3px}
+.ch-row .acts2 .btn{padding:2px 7px;font-size:12.5px}
+.ch-empty{color:var(--muted);text-align:center;padding:12px;font-size:14px}
+.ch-opts{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-top:12px}
+.ch-bar{height:6px;background:var(--well);border-radius:3px;overflow:hidden;margin-top:10px;display:flex}
+.ch-bar i{display:block;height:100%;border-right:1px solid var(--panel)}
+.ch-bar i:nth-child(odd){background:var(--teal)}
+.ch-bar i:nth-child(even){background:color-mix(in srgb,var(--teal) 60%,var(--panel))}
+.ch-bar.over i{background:var(--alert)!important}
+.slices{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:8px}
+.slices .sl{min-width:30px;padding:3px 6px;font-family:var(--mono);font-size:12px}
 dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:16px 18px;max-width:min(560px,calc(100vw - 32px));box-shadow:0 10px 40px var(--shadow)}
 dialog::backdrop{background:var(--scrim)}
 dialog h3{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.05em;text-transform:uppercase;margin:0 0 8px}
@@ -281,6 +299,7 @@ dialog .row{margin-top:12px}
       <button class="btn small" id="edLoad">Load sound…</button>
       <select class="sel" id="edMove" aria-label="Swap with another pad"><option value="">Swap with…</option></select>
       <button class="btn small danger" id="edClear">Clear pad</button>
+      <button class="btn small" id="chopOpen" title="Join several sounds into one chopped pad">Chop builder…</button>
       <div class="ed-meta" id="edMeta"></div>
     </div>
     <input type="file" id="padIn" accept=".wav,.wave,.mp3,.ogg,.oga,.flac,.m4a,.aac,.aif,.aiff,.webm,audio/*" hidden>
@@ -307,6 +326,7 @@ dialog .row{margin-top:12px}
           <div class="phead" id="phead" hidden></div>
         </div>
         <div class="mem" id="edMem" style="margin-top:4px"><b></b></div>
+        <div class="slices" id="slices" hidden><span class="lbl" id="slLbl">Slices</span><span id="sliceBtns" class="slices" style="margin:0"></span><button class="btn small" id="sliceEdit">Edit slices…</button></div>
         <div class="note" id="edMemTxt"></div>
       </div>
 
@@ -425,6 +445,30 @@ dialog .row{margin-top:12px}
   <div class="imp-list" id="impList"></div>
   <ul class="imp-notes" id="impNotes"></ul>
   <div class="row"><span class="grow"></span><button class="btn" id="impUndo">Undo import</button><button class="btn primary" id="impKeep">Keep</button></div>
+</dialog>
+
+<dialog id="dlgChop" class="wide" aria-labelledby="chTitle">
+  <h3 id="chTitle">Chop builder</h3>
+  <p>Joins sounds into one pad, each in an equal-length slot, and sets the P-6's Chop to match, so in KYBD mode each sound is its own key and the sequencer can play any of them on any step.</p>
+  <div class="row"><span class="lbl">Add</span>
+    <select class="sel" id="chFrom" aria-label="Add a pad from the kit"><option value="">A pad from the kit…</option></select>
+    <button class="btn small" id="chBank">This bank's pads</button>
+    <button class="btn small" id="chFiles">Files…</button>
+    <span class="grow"></span><button class="btn small" id="chClear">Remove all</button></div>
+  <input type="file" id="chFileIn" multiple accept=".wav,.wave,.mp3,.ogg,.oga,.flac,.m4a,.aac,.aif,.aiff,.webm,audio/*" hidden>
+  <div class="ch-list" id="chList"></div>
+  <div class="ch-opts">
+    <span class="row" style="gap:6px"><span class="lbl">Rate</span><span class="seg" id="chRate"></span></span>
+    <span class="row" style="gap:6px"><span class="lbl">Channels</span><span class="seg" id="chCh"><button data-v="1">Mono</button><button data-v="2">Stereo</button></span></span>
+    <span class="row" style="gap:6px"><span class="lbl">Slot</span><select class="sel" id="chSlot"><option value="0">Longest sound</option><option value="50">50 ms</option><option value="100">100 ms</option><option value="150">150 ms</option><option value="250">250 ms</option><option value="350">350 ms</option><option value="500">500 ms</option><option value="750">750 ms</option><option value="1000">1 s</option><option value="1500">1.5 s</option><option value="2000">2 s</option></select></span>
+    <button class="tog" id="chTrim" aria-pressed="true">Trim silence</button>
+    <button class="tog" id="chNorm" aria-pressed="false">Normalize each</button>
+  </div>
+  <div class="ch-bar" id="chBar"></div>
+  <p class="note" id="chSum"></p>
+  <div class="row"><span class="lbl">Name</span><input class="inp" id="chName" maxlength="40" style="flex:1 1 160px" autocomplete="off">
+    <span class="lbl">Put on pad</span><select class="sel" id="chTo"></select></div>
+  <div class="row"><span class="grow"></span><button class="btn" id="chCancel">Cancel</button><button class="btn primary" id="chBuild">Build</button></div>
 </dialog>
 
 <dialog id="dlgKit">
@@ -1978,6 +2022,25 @@ function showEditor() {
   setPlayBtn();
   showEditorDyn();
 }
+function sliceInfo(p) {
+  const n = Math.round(p && p.prm ? p.prm.CHOP : 1);
+  if (!p || !p.r || n < 2) return null;
+  const st = clamp(p.prm.START_POS, 0, frames(p) - 1), len = Math.min(frames(p) - st, Math.max(1, p.prm.SIZE));
+  return { n, st, slot: Math.floor(len / n) };
+}
+function playSlice(p, i) {
+  const si = sliceInfo(p); if (!si) return;
+  playObj({ ...p, prm: { ...p.prm, START_POS: si.st + i * si.slot, SIZE: si.slot, LOOP: 0, REVERSE: 0 } }, p.slot);
+}
+function showSlices(p) {
+  const si = sliceInfo(p), box = $('#slices');
+  box.hidden = !si; if (!si) return;
+  const e = p.edit, shifts = e.trimA || e.trimB != null || e.loop;
+  $('#slLbl').textContent = `${si.n} slices · ${fmtS(si.slot / p.r.sr)} each` + (shifts ? ' · trimming or looping moves the slice edges' : '');
+  const btns = $('#sliceBtns'); btns.innerHTML = '';
+  const names = p.chop && p.chop.names && p.chop.names.length === si.n ? p.chop.names : null;
+  for (let i = 0; i < si.n; i++) btns.append(h('button', { class: 'btn small sl', title: names ? names[i] : `Slice ${i + 1}`, onclick: () => playSlice(p, i) }, String(i + 1)));
+}
 function showEditorDyn() {
   const p = cur();
   POTS.forEach(k => k.render());
@@ -1999,6 +2062,7 @@ function showEditorDyn() {
     t.textContent = over ? `Too long for one pad by ${fmtS(over / p.r.sr)}. Use Fit to the P-6 under Format, go mono, or trim. Saved as is, it would be cut off.`
       : `${Math.round(n / mx * 100)}% of a pad (max ${fmtS(mx / p.r.sr)} ${p.r.ch.length > 1 ? 'stereo' : 'mono'} at this rate).`;
     $('#ptsSay').textContent = p.points === 'file' ? 'Following the whole file.' : 'Set by hand.';
+    showSlices(p);
   }
   const raw = $('#rawGrid');
   for (const k of P6.KEYS) {
@@ -2211,7 +2275,7 @@ async function loadKitJson(kit, byPath, base) {
       const { src } = await makeSrc(await ent.bytes(), k.sourceName || k.source.split('/').pop());
       const pad = newPad(k.slot, src, k.name);
       pad.edit = { ...EDIT0, ...(k.edit || {}) }; pad.out = { ...OUT0, ...(k.out || {}) };
-      pad.prm = { ...P6.defaults(slotIndex(k.slot)), ...(k.prm || {}) }; pad.points = k.points === 'custom' ? 'custom' : 'file';
+      pad.prm = { ...P6.defaults(slotIndex(k.slot)), ...(k.prm || {}) }; pad.points = k.points === 'custom' ? 'custom' : 'file'; if (k.chop) pad.chop = k.chop;
       await renderNow(pad); pad.lastN = frames(pad);
       S.pads[k.slot] = pad; n++; rows.push({ slot: k.slot, pad, prm: false, was: null });
     } catch (err) { errs.push(err.message); }
@@ -2283,7 +2347,7 @@ async function buildZip(full) {
       const ext = (pad.src.name.match(/\.[^.]+$/) || ['.wav'])[0].toLowerCase();
       const srcPath = `source/${pad.slot} ${safeName(pad.name) || 'sound'}${ext}`;
       z.file(srcPath, pad.src.bytes);
-      kit.pads.push({ slot: pad.slot, name: pad.name, source: srcPath, sourceName: pad.src.name, edit: pad.edit, out: pad.out, prm: pad.prm, points: pad.points });
+      kit.pads.push({ slot: pad.slot, name: pad.name, source: srcPath, sourceName: pad.src.name, edit: pad.edit, out: pad.out, prm: pad.prm, points: pad.points, chop: pad.chop || undefined });
     }
   }
   if (full) z.file('kit.json', JSON.stringify(kit, null, 1));
@@ -2391,6 +2455,130 @@ function writeOpen() {
   $('#wrStep1').hidden = false; $('#wrStep2').hidden = true;
   $('#wrNote').textContent = window.showDirectoryPicker ? `PAD folders go straight into IMPORT, which is how Roland’s manual loads samples. BANK folders follow Roland’s factory restore: four banks per import. You’ll see what changes before anything is written.` : 'This browser can’t write to a drive. Use Device zip and copy the folders by hand (Chrome or Edge on a computer can write directly).';
   $('#wrGo').disabled = !window.showDirectoryPicker; $('#dlgWrite').showModal();
+}
+
+/* ================= chop builder =================
+   Several sounds -> one pad: each is (optionally) trimmed of silence, converted to one rate and channel
+   count, put in an equal-length slot (padded with silence, or cut with a short fade), and joined. CHOP is set
+   to the count, so the P-6 splits the pad back into the same slots. */
+const CH = { items: [], rate: 44100, nch: 1, slotMs: 0, trim: true, norm: false };
+const CH_MAX = 32;
+function chItem(name, sr, ch) {
+  const it = { name: String(name || 'Sound').slice(0, 40), sr, ch: ch.map(c => c.slice()) };
+  // silence bounds (-54 dB), kept so the summary can update without re-scanning
+  const thr = Math.pow(10, -54 / 20), n = ch[0].length, loud = i => it.ch.some(c => Math.abs(c[i]) > thr);
+  let a = 0; while (a < n - 1 && !loud(a)) a++;
+  let b = n - 1; while (b > a && !loud(b)) b--;
+  it.a = Math.max(0, a - Math.round(0.001 * sr)); it.b = Math.min(n, b + Math.round(0.005 * sr) + 1);
+  return it;
+}
+function chLen(it) { const n = CH.trim ? it.b - it.a : it.ch[0].length; return Math.max(1, Math.round(n * CH.rate / it.sr)); }
+function chSlot() { return CH.slotMs ? Math.round(CH.slotMs / 1000 * CH.rate) : Math.max(1, ...CH.items.map(chLen)); }
+function chAdd(items) {
+  let added = 0;
+  for (const it of items) { if (CH.items.length >= CH_MAX) { toast(`A chop holds up to ${CH_MAX} sounds here.`, true); break; } CH.items.push(it); added++; }
+  chRender(); return added;
+}
+function chFromPad(p) {
+  if (!p || !p.r) return null;
+  const n = frames(p), st = clamp(p.prm.START_POS, 0, n - 1), len = Math.min(n - st, Math.max(1, p.prm.SIZE));
+  return chItem(p.name || p.slot, p.r.sr, p.r.ch.map(c => c.subarray(st, st + len)));
+}
+function chOpen(fromPad) {
+  CH.items = [];
+  const p = cur();
+  if (fromPad && p && sliceInfo(p)) {
+    // split an existing chopped pad back into its slices
+    const si = sliceInfo(p), names = p.chop && p.chop.names && p.chop.names.length === si.n ? p.chop.names : null;
+    for (let i = 0; i < si.n; i++) CH.items.push(chItem(names ? names[i] : `${p.name || p.slot} ${i + 1}`, p.r.sr, p.r.ch.map(c => c.subarray(si.st + i * si.slot, si.st + (i + 1) * si.slot))));
+    CH.rate = P6.RATES.includes(p.r.sr) ? p.r.sr : 44100; CH.nch = p.r.ch.length;
+    $('#chName').value = p.name || 'Chop';
+  } else {
+    CH.rate = 44100; CH.nch = 1; $('#chName').value = '';
+  }
+  const from = $('#chFrom'); from.innerHTML = '<option value="">A pad from the kit…</option>';
+  for (const s of SLOTS) { const q = padAt(s); if (q) from.append(h('option', { value: s }, `${s} · ${q.name || 'Untitled'}`)); }
+  const to = $('#chTo'); to.innerHTML = '';
+  for (const s of SLOTS) { const q = padAt(s); to.append(h('option', { value: s }, `${s}${q ? ' · ' + (q.name || 'Untitled') + ' (replace)' : ' · empty'}`)); }
+  to.value = fromPad || !padAt(S.sel) ? S.sel : (SLOTS.find(s => s[0] === S.bank && !padAt(s)) || SLOTS.find(s => !padAt(s)) || S.sel);
+  chRender(); $('#dlgChop').showModal();
+}
+function chRender() {
+  const list = $('#chList'); list.innerHTML = '';
+  if (!CH.items.length) list.append(h('div', { class: 'ch-empty' }, 'Add pads from the kit or sound files. Each one becomes a slice, in this order.'));
+  CH.items.forEach((it, i) => {
+    const mv = (d) => { const j = i + d; if (j < 0 || j >= CH.items.length) return; [CH.items[i], CH.items[j]] = [CH.items[j], CH.items[i]]; chRender(); };
+    list.append(h('div', { class: 'ch-row' }, h('b', null, i + 1), h('span', { class: 'nm', title: it.name }, it.name), h('span', { class: 'inf' }, fmtS(chLen(it) / CH.rate)),
+      h('span', { class: 'acts2' },
+        h('button', { class: 'btn', title: 'Play', 'aria-label': `Play ${it.name}`, onclick: () => chPlay(it) }, '▶'),
+        h('button', { class: 'btn', title: 'Move up', 'aria-label': 'Move up', disabled: i === 0, onclick: () => mv(-1) }, '↑'),
+        h('button', { class: 'btn', title: 'Move down', 'aria-label': 'Move down', disabled: i === CH.items.length - 1, onclick: () => mv(1) }, '↓'),
+        h('button', { class: 'btn danger', title: 'Remove', 'aria-label': `Remove ${it.name}`, onclick: () => { CH.items.splice(i, 1); chRender(); } }, '✕'))));
+  });
+  $$('#chRate button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.v === CH.rate));
+  $$('#chCh button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.v === CH.nch));
+  $('#chTrim').setAttribute('aria-pressed', CH.trim); $('#chNorm').setAttribute('aria-pressed', CH.norm); $('#chSlot').value = String(CH.slotMs);
+  const n = CH.items.length, slot = n ? chSlot() : 0, total = slot * n, mx = P6.maxFrames(CH.nch), over = total > mx;
+  const bar = $('#chBar'); bar.innerHTML = ''; bar.classList.toggle('over', over);
+  for (let i = 0; i < n; i++) bar.append(h('i', { style: `width:${Math.min(100 / n, slot / mx * 100)}%` }));
+  const cut = CH.slotMs ? CH.items.filter(it => chLen(it) > slot).length : 0;
+  const sum = $('#chSum'); sum.classList.toggle('bad', over);
+  sum.textContent = !n ? '' : over
+    ? `${n} slots of ${fmtS(slot / CH.rate)} make ${fmtS(total / CH.rate)}, but a pad holds ${fmtS(mx / CH.rate)} at ${fmtRate(CH.rate)} ${CH.nch > 1 ? 'stereo' : 'mono'}. Try ${[CH.nch > 1 ? 'mono' : '', CH.rate > 11025 ? 'a lower rate' : '', 'a shorter slot', 'fewer sounds'].filter(Boolean).join(', ').replace(/, ([^,]+)$/, ', or $1')}.`
+    : `${n} slice${n === 1 ? '' : 's'} of ${fmtS(slot / CH.rate)} = ${fmtS(total / CH.rate)}, ${Math.round(total / mx * 100)}% of a pad. Chop will be set to ${n}.` + (cut ? ` ${cut} sound${cut === 1 ? '' : 's'} longer than the slot will be cut short with a fade.` : '');
+  $('#chBuild').disabled = n < 2 || over;
+  $('#chBuild').textContent = n < 2 ? 'Add at least 2 sounds' : `Build on ${$('#chTo').value}`;
+}
+function chPlay(it) {
+  const c = ac(); stopVoice();
+  const a = CH.trim ? it.a : 0, b = CH.trim ? it.b : it.ch[0].length;
+  const buf = c.createBuffer(it.ch.length, b - a, it.sr); it.ch.forEach((d, i) => buf.copyToChannel(d.subarray(a, b), i));
+  const s = c.createBufferSource(); s.buffer = buf; s.connect(S.master); s.start();
+}
+async function chConvert(it) {
+  const a = CH.trim ? it.a : 0, b = CH.trim ? it.b : it.ch[0].length, len = chLen(it);
+  let ch;
+  if (it.sr === CH.rate) ch = it.ch.map(c => c.slice(a, b));
+  else {
+    const oc = new OfflineAudioContext(it.ch.length, len, CH.rate), buf = oc.createBuffer(it.ch.length, b - a, it.sr);
+    it.ch.forEach((d, i) => buf.copyToChannel(d.subarray(a, b), i));
+    const s = oc.createBufferSource(); s.buffer = buf; s.connect(oc.destination); s.start();
+    const r = await oc.startRendering(); ch = Array.from({ length: it.ch.length }, (_, i) => r.getChannelData(i).slice());
+  }
+  if (CH.nch === 1 && ch.length > 1) { const m = new Float32Array(ch[0].length); for (let i = 0; i < m.length; i++) m[i] = (ch[0][i] + ch[1][i]) * 0.5; ch = [m]; }
+  else if (CH.nch === 2 && ch.length === 1) ch = [ch[0], ch[0].slice()];
+  if (CH.norm) { let pk = 0; for (const c of ch) for (let i = 0; i < c.length; i++) pk = Math.max(pk, Math.abs(c[i])); if (pk > 1e-6) for (const c of ch) for (let i = 0; i < c.length; i++) c[i] *= 0.966 / pk; }
+  return ch;
+}
+async function chBuild() {
+  const n = CH.items.length; if (n < 2) return;
+  const slot = chSlot(), total = slot * n, to = $('#chTo').value;
+  if (total > P6.maxFrames(CH.nch)) return;
+  $('#chBuild').disabled = true; $('#chBuild').textContent = 'Building…';
+  try {
+    const out = Array.from({ length: CH.nch }, () => new Float32Array(total)), fade = Math.round(0.004 * CH.rate);
+    for (let i = 0; i < n; i++) {
+      const ch = await chConvert(CH.items[i]), len = Math.min(slot, ch[0].length), cutShort = ch[0].length > slot;
+      for (let c = 0; c < CH.nch; c++) {
+        const seg = ch[c].subarray(0, len).slice();
+        if (cutShort) for (let k = 0; k < Math.min(fade, len); k++) seg[len - 1 - k] *= k / fade;
+        out[c].set(seg, i * slot);
+      }
+    }
+    const name = ($('#chName').value.trim() || `Chop · ${n}`).slice(0, 40);
+    const { src } = await makeSrc(WAV.writeFloat(out, CH.rate), safeName(name) + '.wav');
+    const snap = snapshot(), was = padAt(to);
+    const pad = newPad(to, src, name);
+    pad.out = { ...OUT0, rate: CH.rate };
+    pad.prm.CHOP = n;
+    if (was && was.prm) for (const k of ['LEVEL', 'PAN', 'SEND_DELAY', 'SEND_REVERB', 'MONO_POLY']) pad.prm[k] = was.prm[k];
+    pad.chop = { names: CH.items.map(it => it.name) };
+    await renderNow(pad); pad.lastN = frames(pad);
+    $('#dlgChop').close();
+    setPad(to, pad); persist(); selectPad(to);
+    importReport({ title: `Built a ${n}-slice chop`, rows: [{ slot: to, pad, prm: false, was }], snap,
+      desc: `${CH.items.map((it, i) => `${i + 1} ${it.name}`).join(' · ')}. Chop is set to ${n}: on the P-6, switch to KYBD mode and each key plays one slice, so you can sequence them step by step. Use the slice buttons under the waveform to hear each one.` });
+  } catch (e) { toast('Couldn’t build the chop: ' + e.message, true); chRender(); }
 }
 
 /* ================= what's on the P-6 (read from its exports) =================
@@ -2525,7 +2713,7 @@ let persistTimer = 0;
 function persist() {
   clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
-    const v = { name: S.kitName, bank: S.bank, sel: S.sel, pads: Object.values(S.pads).map(p => ({ slot: p.slot, name: p.name, edit: p.edit, out: p.out, prm: p.prm, points: p.points, src: { name: p.src.name, bytes: p.src.bytes } })) };
+    const v = { name: S.kitName, bank: S.bank, sel: S.sel, pads: Object.values(S.pads).map(p => ({ slot: p.slot, name: p.name, edit: p.edit, out: p.out, prm: p.prm, points: p.points, chop: p.chop, src: { name: p.src.name, bytes: p.src.bytes } })) };
     DB.put(v).catch(() => {});
   }, 400);
 }
@@ -2537,7 +2725,7 @@ async function restore() {
     try {
       const { src } = await makeSrc(k.src.bytes, k.src.name);
       const pad = newPad(k.slot, src, k.name);
-      Object.assign(pad, { edit: { ...EDIT0, ...k.edit }, out: { ...OUT0, ...k.out }, prm: { ...P6.defaults(slotIndex(k.slot)), ...k.prm }, points: k.points });
+      Object.assign(pad, { edit: { ...EDIT0, ...k.edit }, out: { ...OUT0, ...k.out }, prm: { ...P6.defaults(slotIndex(k.slot)), ...k.prm }, points: k.points, chop: k.chop });
       await renderNow(pad); pad.lastN = frames(pad);
       S.pads[k.slot] = pad;
     } catch (e) {}
@@ -2730,6 +2918,26 @@ async function boot() {
   $('#wrCommit').addEventListener('click', writeCommit);
   $('#wrSkip').addEventListener('change', wrCount);
   $('#devRead').addEventListener('click', () => $('#dlgRead').showModal());
+  $('#chopOpen').addEventListener('click', () => chOpen(false));
+  $('#sliceEdit').addEventListener('click', () => chOpen(true));
+  $('#chRate').append(...P6.RATES.map(r => h('button', { 'data-v': r }, fmtRate(r))));
+  $('#chRate').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { CH.rate = +b.dataset.v; chRender(); } });
+  $('#chCh').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { CH.nch = +b.dataset.v; chRender(); } });
+  $('#chSlot').addEventListener('change', () => { CH.slotMs = +$('#chSlot').value; chRender(); });
+  $('#chTrim').addEventListener('click', () => { CH.trim = !CH.trim; chRender(); });
+  $('#chNorm').addEventListener('click', () => { CH.norm = !CH.norm; chRender(); });
+  $('#chTo').addEventListener('change', chRender);
+  $('#chFrom').addEventListener('change', () => { const s = $('#chFrom').value; $('#chFrom').value = ''; const it = chFromPad(padAt(s)); if (it) chAdd([it]); });
+  $('#chBank').addEventListener('click', () => { const its = [1, 2, 3, 4, 5, 6].map(k => chFromPad(padAt(`${S.bank}-${k}`))).filter(Boolean); if (!its.length) toast(`Bank ${S.bank} is empty.`); else chAdd(its); });
+  $('#chFiles').addEventListener('click', () => $('#chFileIn').click());
+  $('#chFileIn').addEventListener('change', async () => {
+    const fs = Array.from($('#chFileIn').files); $('#chFileIn').value = ''; const its = [];
+    for (const f of fs) { try { const { src } = await makeSrc(await f.arrayBuffer(), f.name); its.push(chItem(f.name.replace(/\.[^.]+$/, ''), src.sr, src.ch)); } catch (e) { toast(e.message, true); } }
+    chAdd(its);
+  });
+  $('#chClear').addEventListener('click', () => { CH.items = []; chRender(); });
+  $('#chCancel').addEventListener('click', () => $('#dlgChop').close());
+  $('#chBuild').addEventListener('click', chBuild);
   $('#rdCancel').addEventListener('click', () => $('#dlgRead').close());
   $('#rdGo').addEventListener('click', devReadDrive);
   $('#rdSaved').addEventListener('click', () => { $('#dlgRead').close(); $('#devZipIn').click(); });
